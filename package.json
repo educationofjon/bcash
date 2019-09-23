@@ -1,12 +1,12 @@
 {
   "name": "bcash",
-  "version": "1.2.0",
+  "version": "2.0.0-dev",
   "description": "Bitcoin cash bike-shed",
   "license": "MIT",
   "repository": "git://github.com/bcoin-org/bcash.git",
   "homepage": "https://github.com/bcoin-org/bcash",
   "bugs": {
-    "url": "https://github.com/bcoin-org/bcash/issues"
+    "url": "https://github.com/rojii/bcash/issues"
   },
   "author": "Fedor Indutny <fedor@indutny.com>",
   "contributors": [
@@ -38,10 +38,10 @@
     "blst": "^0.1.5",
     "bmutex": "^0.1.6",
     "bsert": "0.0.10",
-    "bsip": "^0.1.8",
-    "bsock": "^0.1.8",
+    "bsip": "^0.1.9",
+    "bsock": "^0.1.9",
     "bsocks": "^0.2.5",
-    "bstring": "^0.3.8",
+    "bstring": "^0.3.9",
     "btcp": "^0.1.5",
     "buffer-map": "0.0.7",
     "bufio": "^1.0.6",
@@ -52,7 +52,7 @@
     "n64": "^0.2.9"
   },
   "devDependencies": {
-    "bmocha": "^2.1.1"
+    "bmocha": "^2.1.2"
   },
   "main": "./lib/bcoin.js",
   "bin": {
