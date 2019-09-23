@@ -22,7 +22,7 @@ Try it in the browser: https://bcoin.io/browser/
 ## Install
 
 ```
-$ git clone git://github.com/bcoin-org/bcash.git
+$ git clone git://github.com/rojii/bcash.git
 $ cd bcash
 $ npm install
 $ ./bin/bcash
@@ -56,7 +56,7 @@ all code is your original work. `</legalese>`
 
 - Copyright (c) 2014-2015, Fedor Indutny (MIT License).
 - Copyright (c) 2014-2017, Christopher Jeffrey (MIT License).
-- Copyright (c) 2018, bcash developers.
+- Copyright (c) 2018-2019, bcash developers (MIT License).
 
 See LICENSE for more info.
 
