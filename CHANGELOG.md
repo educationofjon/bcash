@@ -1,5 +1,14 @@
 # Bcash Release Notes & Changelog
 
+## v2.0.0
+This release includes:
+- Nov 15th upgrade
+  - Enable Schnorr Signatures on the OP_CHECKMULTISIG Opcode.
+  - New ChainDB layout for block/undo-block data migrated from LevelDB to flat files.
+  - Address indexers bugs corrected (users can distinguish between p2pkh addresses).
+  - Enforce VERIFY_MINIMALDATA.
+  - bug fixes.
+
 ## v1.2.0
 
 This release includes:
