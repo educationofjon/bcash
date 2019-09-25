@@ -59,7 +59,7 @@ const wallet = new MemWallet({
   network
 });
 
-const MAA = network.block.magneticAnomalyActivationTime;
+const GRAVITON = network.block.gravitonActivationTime = util.now() + 100;
 
 let tip1 = null;
 let tip2 = null;
@@ -109,6 +109,7 @@ async function mineCSV(fund) {
 
   return await job.mineAsync();
 }
+
 
 /*
  * @param {Number} size - Expected tx size
@@ -183,7 +184,7 @@ describe('Chain', function() {
     await miner.open();
     await workers.open();
 
-    network.block.magneticAnomalyActivationTime = util.now() + 3600;
+    network.block.gravitonActivationTime = GRAVITON;
 
     miner.addresses.length = 0;
     miner.addAddress(wallet.getReceive());
@@ -490,60 +491,6 @@ describe('Chain', function() {
     assert(await chain.db.verifyDeployments());
   });
 
-  it('should test csv', async () => {
-    const tx = (await chain.getBlock(chain.height - 100)).txs[0];
-    const csvBlock = await mineCSV(tx);
-
-    assert(await chain.add(csvBlock));
-
-    const csv = csvBlock.txs[1];
-
-    const spend = new MTX();
-
-    spend.addOutput({
-      script: [
-        Opcode.fromInt(2),
-        Opcode.fromSymbol('checksequenceverify')
-      ],
-      value: 10000
-    });
-
-    spend.addTX(csv, 0);
-    spend.setSequence(0, 1, false);
-
-    const job = await cpu.createJob();
-
-    job.addTX(spend.toTX(), spend.view);
-    job.refresh();
-
-    const block = await job.mineAsync();
-
-    assert(await chain.add(block));
-  });
-
-  it('should fail csv with bad sequence', async () => {
-    const csv = (await chain.getBlock(chain.height - 100)).txs[0];
-    const spend = new MTX();
-
-    spend.addOutput({
-      script: [
-        Opcode.fromInt(1),
-        Opcode.fromSymbol('checksequenceverify')
-      ],
-      value: 1 * 1e8
-    });
-
-    spend.addTX(csv, 0);
-    spend.setSequence(0, 1, false);
-
-    const job = await cpu.createJob();
-    job.addTX(spend.toTX(), spend.view);
-    job.refresh();
-
-    assert.strictEqual(await mineBlock(job),
-      'mandatory-script-verify-flag-failed');
-  });
-
   it('should mine a block', async () => {
     const block = await cpu.mineBlock();
     assert(block);
@@ -575,11 +522,11 @@ describe('Chain', function() {
     job.addTX(spend.toTX(), spend.view);
     job.refresh();
 
-    assert.strictEqual(await mineBlock(job), 'bad-txns-nonfinal');
+    assert.strictEqual(await mineBlock(job), 'bad-txns-undersize');
   });
 
   it('should have correct wallet balance', async () => {
-    assert.strictEqual(wallet.balance, 1412499980000);
+    assert.strictEqual(wallet.balance, 1411874990000);
   });
 
   it('should fail to connect bad bits', async () => {
@@ -632,7 +579,7 @@ describe('Chain', function() {
       assert(await chain.add(block));
     }
 
-    assert.strictEqual(chain.height, 2636);
+    assert.strictEqual(chain.height, 2634);
   });
 
   if (process.browser)
@@ -677,53 +624,6 @@ describe('Chain', function() {
     job.refresh();
 
     assert.strictEqual(await mineBlock(job), 'bad-blk-length');
-  });
-
-  it('should mine a big block', async () => {
-    const oldMaxForkBlockSize = consensus.MAX_FORK_BLOCK_SIZE;
-    consensus.MAX_FORK_BLOCK_SIZE = 4000000;
-
-    const OPRETURN = Script.fromNulldata(Buffer.alloc(70, 1));
-    const start = chain.height - 2000;
-    const end = chain.height - 200;
-    const job = await cpu.createJob();
-    const maxSigops = consensus.maxBlockSigops(consensus.MAX_FORK_BLOCK_SIZE);
-    const perTxSigops = Math.floor((maxSigops - 1000) / 1801) - 2;
-    const perTxSize = Math.floor(consensus.MAX_FORK_BLOCK_SIZE / 1801);
-
-    const mtx = new MTX();
-
-    const fillSize = perTxSize - (51 + 107 + (perTxSigops * 34));
-    const opreturns = Math.floor(fillSize / 81);
-
-    for (let j = 0; j < perTxSigops; j++)
-      mtx.addOutput(wallet.getReceive(), 1);
-
-    for (let j = 0; j < opreturns; j++)
-      mtx.addOutput({ script: OPRETURN });
-
-    // fill max tx
-    // with 1801 transactions,
-    // limits sigops to maxSigops for a block
-    // and calculates expected tx size for each one
-    // that is filled with OP_RETURN
-
-    // consensus size: 117 bytes
-    for (let i = start; i <= end; i++) {
-      const block = await chain.getBlock(i);
-      const cb = block.txs[0]; // 117 bytes
-
-      const mtxi = mtx.clone();
-      mtxi.addTX(cb, 0); // 51 bytes
-      wallet.sign(mtxi); // 107 bytes
-      job.pushTX(mtxi.toTX());
-    }
-
-    job.refresh();
-
-    assert.strictEqual(await mineBlock(job), 'OK');
-
-    consensus.MAX_FORK_BLOCK_SIZE = oldMaxForkBlockSize;
   });
 
   it('should fail to connect bad versions', async () => {
@@ -838,47 +738,7 @@ describe('Chain', function() {
       assert(await chain.add(block, flags));
     }
 
-    assert.strictEqual(chain.height, 2748);
-  });
-
-  it('should fail to connect too many sigops', async () => {
-    const start = chain.height - 110;
-    const end = chain.height - 100;
-    const job = await cpu.createJob();
-
-    const script = new Script();
-
-    script.pushInt(20);
-
-    for (let i = 0; i < 20; i++)
-      script.pushData(ZERO_KEY);
-
-    script.pushInt(20);
-    script.pushOp(opcodes.OP_CHECKMULTISIG);
-
-    script.compile();
-
-    for (let i = start; i <= end; i++) {
-      const block = await chain.getBlock(i);
-      const cb = block.txs[0];
-
-      if (cb.outputs.length === 2)
-        continue;
-
-      const mtx = new MTX();
-
-      for (let j = 2; j < cb.outputs.length; j++) {
-        mtx.addTX(cb, j);
-        mtx.inputs[j - 2].script.fromItems([script.toRaw()]);
-      }
-
-      mtx.addOutput(wallet.getAddress(), 1);
-      job.pushTX(mtx.toTX());
-    }
-
-    job.refresh();
-
-    assert.strictEqual(await mineBlock(job), 'bad-blk-sigops');
+    assert.strictEqual(chain.height, 2745);
   });
 
   it('should fail to connect block with too many sigops in tx', async () => {
@@ -931,25 +791,12 @@ describe('Chain', function() {
     assert.strictEqual(await mineBlock(job), 'bad-txn-sigops');
   });
 
-  it('should activate magnetic anomaly', async () => {
-    const network = chain.network;
-
-    const mtp = await chain.getMedianTime(chain.tip);
-
-    // make sure we don't activate it in the past.
-    const activationTime = Math.max(network.now(), mtp + 1);
-
-    // modify activation time for test
-    network.block.magneticAnomalyActivationTime = activationTime;
-    assert.strictEqual(chain.state.hasMagneticAnomaly(), false);
-
-    // make sure we have MTP is more than activationTime
-    for (let i = 0; i < consensus.MEDIAN_TIMESPAN >>> 1; i++) {
+  it('should activate graviton', async () => {
+    for (let i = 0; i < 1; i++) {
       const block = await cpu.mineBlock();
-      assert(await chain.add(block));
+      await chain.add(block);
     }
-
-    assert.strictEqual(chain.state.hasMagneticAnomaly(), true);
+    assert.strictEqual(chain.state.hasGraviton(), true);
   });
 
   it('should not mine block with tx smaller than MIN_TX_SIZE', async () => {
@@ -1081,24 +928,6 @@ describe('Chain', function() {
     after(async () => {
       network.checkpointMap = {};
       network.lastCheckpoint = 0;
-    });
-
-    it('will reject blocks before last checkpoint', async () => {
-      const entry = await chain.getEntry(chain.tip.height - 10);
-      const block = await cpu.mineBlock(entry);
-
-      let err = null;
-
-      try {
-        await chain.add(block);
-      } catch (e) {
-        err = e;
-      }
-
-      assert(err);
-      assert.equal(err.type, 'VerifyError');
-      assert.equal(err.reason, 'bad-fork-prior-to-checkpoint');
-      assert.equal(err.score, 100);
     });
 
     it('will accept blocks after last checkpoint', async () => {
