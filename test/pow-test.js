@@ -64,12 +64,12 @@ describe('Difficulty', function() {
 
   it('should get an ASERT target', async () => {
     const prev = new ChainEntry();
-    prev.time = 1602480406;
+    prev.time = 1602486147;
     prev.bits = 0x1d00ffff;
-    prev.height = 2016;
+    prev.height = 1;
     const first = new ChainEntry();
-    first.time = 1602480932;
-    assert.strictEqual(chain.getASERTTarget(prev, first), network.pow.limit);
+    first.time = 1602486750;
+    assert.strictEqual(chain.getASERTTarget(first, prev), 0x1d00ffff);
   });
 
 
